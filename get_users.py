@@ -9,9 +9,10 @@ client = get_client_from_cli_profile(   GraphRbacManagementClient,
                                         base_url='https://graph.microsoft.com')
 
 import json
-f = open('./out.json','r')
+f = open('./data/out.json','r')
 r = json.loads(f.read())
 
+all_users_emails = []
 
 def get_name(id):
     for d in r: # HACK:total hack
@@ -25,13 +26,29 @@ def get_name(id):
     # return rv
 # data = json.loads('./out.json')
 
+
+
+
 for d in r:
+    user_email = None
     if ('properties' in d) and ('principalName' in d['properties']):
         principal_name = d['properties']['principalName']
         if 'http' not in principal_name:
             if len(principal_name) > 0:
-                print(principal_name, ',')
+                #print(principal_name, ',')
+                user_email = principal_name
             else:
                 rbac_id = d['properties']['additionalProperties']['createdBy']
                 # print('created By:', rbac_id)
-                print(get_name(rbac_id),',')
+                user_email = get_name(rbac_id)
+                #print(user_email)
+
+
+        if user_email != None:
+            if user_email not in all_users_emails:
+                all_users_emails.append(user_email)
+
+
+
+for u in sorted(all_users_emails):
+    print(u)
