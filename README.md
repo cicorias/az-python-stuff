@@ -1,8 +1,8 @@
-#Azure PY stuff
+# Azure PY stuff
 
 
 
-##date compares:
+## date compares:
 ```
 todate=$(date -d 2013-07-18 +%s)
 cond=$(date -d 2014-08-19 +%s)
@@ -16,6 +16,11 @@ fi
 ## Initially set the tags:
 ```
 az group list -o tsv | cut -d$'\t' -f 4 | xargs -L 1 az group update --set tags.keep=no -n
+```
+
+## Check on each from a file
+```
+cat should_be_deleted.txt | xargs -L 1 az group show -o tsv -n
 ```
 
 > FYI: the list was created using the following az cli command
