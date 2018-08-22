@@ -36,3 +36,29 @@ az group list -o tsv --query "[?tags.keep == 'no']" | cut -d$'\t' -f 4
 ```
 az group list -o tsv --query "[?tags.keep == 'no']" | cut -d$'\t' -f 4 | xargs -L 1 az group delete --no-wait -n
 ```
+
+>Update:
+```
+az group list -o tsv --query "[?tags.keep != 'yes']" | cut -d$'\t' -f 4 | xargs -L 1 az group delete --no-wait -y -n
+```
+
+
+## Remove from a list  file
+
+```
+cat goodbye.txt | xargs -L 1 az group delete --no-wait -n
+```
+
+
+
+### Notes
+
+```
+az group list -o tsv --query "[?tags.keep != 'no' && tags.keep != 'yes']"
+az group list -o tsv --query "[?tags.keep == 'no' || tags.keep == 'yes']"|wc
+
+```
+
+```
+ az group list -o tsv --query "[?tags.keep != 'no' && tags.keep != 'yes']"|cut -d$'\t' -f 4| xargs -L 1 az group update --set tags.keep=no -n
+ ```
