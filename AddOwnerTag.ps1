@@ -32,13 +32,13 @@ catch {
 }
 
 $allRGs = (Get-AzureRmResourceGroup).ResourceGroupName
-Write-Warning "Found $($allRGs | measure | Select -ExpandProperty Count) total RGs"
+Write-Output "Found $($allRGs | Measure-Object | Select-Object -ExpandProperty Count) total RGs"
 
-$aliasedRGs = (Find-AzureRmResourceGroup -Tag @{ "CREATED-BY" = $null }).Name
-Write-Warning "Found $($aliasedRGs | measure | Select -ExpandProperty Count) aliased RGs"
+$notAliasedRGs = (Get-AzureRmResourceGroup -Tag @{ 'owner' = $null }).ResourceGroupName
+Write-Output "Found $($aliasedRGs | Measure-Object | Select-Object -ExpandProperty Count) aliased RGs"
   
-$notAliasedRGs = $allRGs | ?{-not ($aliasedRGs -contains $_)}
-Write-Warning "Found $($notAliasedRGs | measure | Select -ExpandProperty Count) un-tagged RGs"
+$aliasedRGs = $allRGs | Where-Object {-not ($aliasedRGs -contains $_)}
+Write-Output "Found $($notAliasedRGs | Measure-Object | Select-Object -ExpandProperty Count) un-tagged RGs"
 
 foreach ($rg in $notAliasedRGs)
 {
@@ -47,14 +47,15 @@ foreach ($rg in $notAliasedRGs)
     $endTime = $currentTime.AddDays(-1 * $cnt)
     $startTime = $endTime.AddDays(-90)
 
-    Write-Warning "Start: $startTime  to End: $endTime"
+    Write-Output "Start: $startTime  to End: $endTime"
         
     $callers = Get-AzureRmLog -ResourceGroup $rg -StartTime $startTime -EndTime $endTime |
-        Where {$_.Authorization.Action -eq "Microsoft.Resources/deployments/write"} | 
-        Select -ExpandProperty Caller | 
+        #Where {$_.Authorization.Action -eq "Microsoft.Resources/deployments/write"} |
+        Where-Object {$_.Authorization.Action -eq "Microsoft.Resources/deployments/write"} |
+        Select-Object -ExpandProperty Caller | 
         Group-Object | 
         Sort-Object  | 
-        Select -ExpandProperty Name
+        Select-Object -ExpandProperty Name
 
     if ($callers)
     {
@@ -62,12 +63,22 @@ foreach ($rg in $notAliasedRGs)
         $alias = $owner -replace "@microsoft.com",""
             
         $tags = (Get-AzureRmResourceGroup -Name $rg).Tags
-        $tags += @{ "CREATED-BY"=$alias }
+        try {
+            $tags += @{ "owner"=$alias }
+        }
+        catch {
+            Write-Output $_.Exception.Message + " for user $alias or owner $owner"
+        }
 
         $rg + ", " + $alias
         if (-not $dryRun) 
         {
-            Set-AzureRmResourceGroup -Name $rg -Tag $tags
+            try {
+                Set-AzureRmResourceGroup -Name $rg -Tag $tags -ErrorAction Continue
+            }
+            catch {
+                Write-Output $_.Exception.Message + "NO TAG update for user $alias or owner $owner"
+            }
         }
     } 
     else 
